@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ditabung YOKK</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 20px;
+  background: #ffffff;
+}
+
+/* ===== LOGO ===== */
+.logo {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.logo img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ===== FORM ===== */
+.form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 15px;
+  margin-bottom: 15px;
+}
+
+.form input {
+  padding: 8px;
+  border: 1px solid #ffb6c1;
+  border-radius: 5px;
+}
+
+/* ===== BUTTON ===== */
+.btn-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 5px;
+  background: #ff6b81;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+/* ===== TABLE ===== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th {
+  background: #ff9aa2;
+  color: white;
+  padding: 8px;
+}
+
+td {
+  border: 1px dashed #ffb6c1;
+  padding: 6px;
+  text-align: center;
+}
+
+.action-btn {
+  background: #ff4757;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ===== LOGO ===== -->
+<div class="logo">
+  <img src="logo.png" alt="Ditabung YOKK">
+</div>
+
+<!-- ===== FORM INPUT ===== -->
+<div class="form">
+  <!-- KIRI -->
+  <input type="date" id="tanggal">
+  <input type="number" id="pemasukan" placeholder="Pemasukan (Rp)">
+
+  <input type="text" id="pj" placeholder="Penanggung Jawab">
+  <input type="number" id="pengeluaran" placeholder="Pengeluaran (Rp)">
+
+  <input type="text" id="keterangan" placeholder="Keterangan">
+  <div></div>
+</div>
+
+<div class="btn-group">
+  <button onclick="tambahData()">Tambah</button>
+  <button onclick="resetData()">Reset Semua</button>
+  <button onclick="downloadCSV()">Download CSV</button>
+</div>
+
+<!-- ===== TABLE ===== -->
+<table>
+<thead>
+<tr>
+  <th>No</th>
+  <th>Tanggal</th>
+  <th>Penanggung Jawab</th>
+  <th>Keterangan</th>
+  <th>Pemasukan</th>
+  <th>Pengeluaran</th>
+  <th>Profit</th>
+  <th>Total</th>
+  <th>Aksi</th>
+</tr>
+</thead>
+
+<tbody id="tabelData"></tbody>
+</table>
+
+<script>
+let data = JSON.parse(localStorage.getItem("ditabung")) || [];
+
+function formatRupiah(angka) {
+  return "Rp " + angka.toLocaleString("id-ID");
+}
+
+function simpan() {
+  localStorage.setItem("ditabung", JSON.stringify(data));
+}
+
+function render() {
+  const tbody = document.getElementById("tabelData");
+  tbody.innerHTML = "";
+
+  let total = 0;
+
+  data.forEach((item, index) => {
+    const profit = item.masuk - item.keluar;
+    total += profit;
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${item.tgl}</td>
+        <td>${item.pj}</td>
+        <td>${item.ket}</td>
+        <td>${formatRupiah(item.masuk)}</td>
+        <td>${formatRupiah(item.keluar)}</td>
+        <td>${formatRupiah(profit)}</td>
+        <td>${formatRupiah(total)}</td>
+        <td>
+          <button class="action-btn" onclick="hapus(${index})">Hapus</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+function tambahData() {
+  const tgl = document.getElementById("tanggal").value;
+  const pj = document.getElementById("pj").value;
+  const ket = document.getElementById("keterangan").value;
+  const masuk = Number(document.getElementById("pemasukan").value);
+  const keluar = Number(document.getElementById("pengeluaran").value);
+
+  if (!tgl || !pj) {
+    alert("Tanggal dan Penanggung Jawab wajib diisi");
+    return;
+  }
+
+  data.push({ tgl, pj, ket, masuk, keluar });
+  simpan();
+  render();
+
+  document.querySelectorAll(".form input").forEach(i => i.value = "");
+}
+
+function hapus(index) {
+  if (confirm("Hapus laporan ini?")) {
+    data.splice(index, 1);
+    simpan();
+    render();
+  }
+}
+
+function resetData() {
+  if (confirm("Reset semua data?")) {
+    data = [];
+    simpan();
+    render();
+  }
+}
+
+function downloadCSV() {
+  let csv = "No,Tanggal,Penanggung Jawab,Keterangan,Pemasukan,Pengeluaran,Profit,Total\n";
+  let total = 0;
+
+  data.forEach((d, i) => {
+    const profit = d.masuk - d.keluar;
+    total += profit;
+    csv += `${i+1},${d.tgl},${d.pj},${d.ket},${d.masuk},${d.keluar},${profit},${total}\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "laporan-ditabung-yokk.csv";
+  a.click();
+}
+
+render();
+</script>
+
+</body>
+</html>
