@@ -17,7 +17,7 @@ body {
   background: #ffffff;
 }
 
-/* ===== LOGO ===== */
+/* LOGO */
 .logo {
   text-align: center;
   margin-bottom: 20px;
@@ -28,7 +28,7 @@ body {
   height: auto;
 }
 
-/* ===== FORM ===== */
+/* FORM */
 .form {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -42,7 +42,7 @@ body {
   border-radius: 5px;
 }
 
-/* ===== BUTTON ===== */
+/* BUTTON */
 .btn-group {
   display: flex;
   gap: 10px;
@@ -50,20 +50,27 @@ body {
   margin-bottom: 15px;
 }
 
-button {
+button, select {
   padding: 8px 12px;
-  border: none;
   border-radius: 5px;
+  border: none;
+}
+
+button {
   background: #ff6b81;
   color: white;
   cursor: pointer;
+}
+
+select {
+  border: 1px solid #ffb6c1;
 }
 
 button:hover {
   opacity: 0.9;
 }
 
-/* ===== TABLE ===== */
+/* TABLE */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -92,14 +99,13 @@ td {
 
 <body>
 
-<!-- ===== LOGO ===== -->
+<!-- LOGO -->
 <div class="logo">
   <img src="logo.png" alt="Ditabung YOKK">
 </div>
 
-<!-- ===== FORM INPUT ===== -->
+<!-- FORM -->
 <div class="form">
-  <!-- KIRI -->
   <input type="date" id="tanggal">
   <input type="number" id="pemasukan" placeholder="Pemasukan (Rp)">
 
@@ -113,11 +119,19 @@ td {
 <div class="btn-group">
   <button onclick="tambahData()">Tambah</button>
   <button onclick="resetData()">Reset Semua</button>
-  <button onclick="downloadCSV()">Download CSV</button>
+
+  <select id="format">
+    <option value="txt">Teks (.txt)</option>
+    <option value="pdf">PDF</option>
+    <option value="doc">Word (.doc)</option>
+    <option value="xls">Excel (.xls)</option>
+  </select>
+
+  <button onclick="downloadData()">Download Data</button>
 </div>
 
-<!-- ===== TABLE ===== -->
-<table>
+<!-- TABLE -->
+<table id="tabel">
 <thead>
 <tr>
   <th>No</th>
@@ -131,11 +145,115 @@ td {
   <th>Aksi</th>
 </tr>
 </thead>
-
 <tbody id="tabelData"></tbody>
 </table>
 
 <script>
+let data = JSON.parse(localStorage.getItem("ditabung")) || [];
+
+function formatRupiah(n) {
+  return "Rp " + n.toLocaleString("id-ID");
+}
+
+function simpan() {
+  localStorage.setItem("ditabung", JSON.stringify(data));
+}
+
+function render() {
+  const tbody = document.getElementById("tabelData");
+  tbody.innerHTML = "";
+  let total = 0;
+
+  data.forEach((d, i) => {
+    const profit = d.masuk - d.keluar;
+    total += profit;
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td>${d.tgl}</td>
+        <td>${d.pj}</td>
+        <td>${d.ket}</td>
+        <td>${formatRupiah(d.masuk)}</td>
+        <td>${formatRupiah(d.keluar)}</td>
+        <td>${formatRupiah(profit)}</td>
+        <td>${formatRupiah(total)}</td>
+        <td><button class="action-btn" onclick="hapus(${i})">Hapus</button></td>
+      </tr>`;
+  });
+}
+
+function tambahData() {
+  const tgl = tanggal.value;
+  const pj = pjInput.value;
+  const ket = keterangan.value;
+  const masuk = Number(pemasukan.value);
+  const keluar = Number(pengeluaran.value);
+
+  if (!tgl || !pj) {
+    alert("Tanggal dan Penanggung Jawab wajib diisi");
+    return;
+  }
+
+  data.push({ tgl, pj, ket, masuk, keluar });
+  simpan();
+  render();
+
+  document.querySelectorAll(".form input").forEach(i => i.value = "");
+}
+
+function hapus(i) {
+  if (confirm("Hapus data ini?")) {
+    data.splice(i, 1);
+    simpan();
+    render();
+  }
+}
+
+function resetData() {
+  if (confirm("Reset semua data?")) {
+    data = [];
+    simpan();
+    render();
+  }
+}
+
+/* ===== DOWNLOAD ===== */
+function downloadData() {
+  const format = document.getElementById("format").value;
+  let content = "LAPORAN DITABUNG YOKK\n\n";
+
+  let total = 0;
+  data.forEach((d, i) => {
+    const profit = d.masuk - d.keluar;
+    total += profit;
+    content += `${i+1}. ${d.tgl} | ${d.pj} | ${d.ket} | +${d.masuk} | -${d.keluar} | Total: ${total}\n`;
+  });
+
+  if (format === "pdf") {
+    window.print();
+    return;
+  }
+
+  let mime = "text/plain";
+  let ext = format;
+
+  if (format === "doc") mime = "application/msword";
+  if (format === "xls") mime = "application/vnd.ms-excel";
+
+  const blob = new Blob([content], { type: mime });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "laporan-ditabung-yokk." + ext;
+  a.click();
+}
+
+render();
+</script>
+
+</body>
+</html>
+
 let data = JSON.parse(localStorage.getItem("ditabung")) || [];
 
 function formatRupiah(angka) {
